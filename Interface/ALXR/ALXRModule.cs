@@ -1,6 +1,7 @@
 ﻿using BaseX;
 using FrooxEngine;
 using System;
+using System.Linq.Expressions;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -320,16 +321,16 @@ namespace QuestProModule.ALXR
             switch (fbEye)
             {
                 case FBEye.Left:
-                    eyeRet.position = new float3(expressions[FBExpression.LeftPos_x], expressions[FBExpression.LeftPos_y], expressions[FBExpression.LeftPos_z]);
-                    eyeRet.rotation = new floatQ(-expressions[FBExpression.LeftRot_x], -expressions[FBExpression.LeftRot_z], -expressions[FBExpression.LeftRot_y], expressions[FBExpression.LeftRot_w]);
+                    eyeRet.position = new float3(expressions[FBExpression.LeftPos_x], -expressions[FBExpression.LeftPos_y], expressions[FBExpression.LeftPos_z]);
+                    eyeRet.rotation = new floatQ(-expressions[FBExpression.LeftRot_x], -expressions[FBExpression.LeftRot_y], -expressions[FBExpression.LeftRot_z], expressions[FBExpression.LeftRot_w]);
                     eyeRet.open = MathX.Max(0, expressions[FBExpression.Eyes_Closed_L]);
                     eyeRet.squeeze = expressions[FBExpression.Lid_Tightener_L];
                     eyeRet.wide = expressions[FBExpression.Upper_Lid_Raiser_L];
                     eyeRet.isValid = IsValid(eyeRet.position);
                     return eyeRet;
                 case FBEye.Right:
-                    eyeRet.position = new float3(expressions[FBExpression.RightPos_x], expressions[FBExpression.RightPos_y], expressions[FBExpression.RightPos_z]);
-                    eyeRet.rotation = new floatQ(-expressions[FBExpression.RightRot_x], -expressions[FBExpression.RightRot_z], -expressions[FBExpression.RightRot_y], expressions[FBExpression.RightRot_w]);
+                    eyeRet.position = new float3(expressions[FBExpression.RightPos_x], -expressions[FBExpression.RightPos_y], expressions[FBExpression.RightPos_z]);
+                    eyeRet.rotation = new floatQ(-expressions[FBExpression.RightRot_x], -expressions[FBExpression.RightRot_y], -expressions[FBExpression.RightRot_z], expressions[FBExpression.RightRot_w]);
                     eyeRet.open = MathX.Max(0, expressions[FBExpression.Eyes_Closed_R]);
                     eyeRet.squeeze = expressions[FBExpression.Lid_Tightener_R];
                     eyeRet.wide = expressions[FBExpression.Upper_Lid_Raiser_R];
@@ -343,7 +344,6 @@ namespace QuestProModule.ALXR
         public void GetEyeExpressions(FBEye fbEye, FrooxEngine.Eye frooxEye)
         {
             frooxEye.PupilDiameter = 0.004f;
-            frooxEye.Frown = 0f;
 
             switch (fbEye)
             {
@@ -353,6 +353,7 @@ namespace QuestProModule.ALXR
                     frooxEye.Openness = MathX.Max(0, expressions[FBExpression.Eyes_Closed_L]);
                     frooxEye.Squeeze = expressions[FBExpression.Lid_Tightener_L];
                     frooxEye.Widen = expressions[FBExpression.Upper_Lid_Raiser_L];
+                    frooxEye.Frown = expressions[FBExpression.Lip_Corner_Puller_L] - expressions[FBExpression.Lip_Corner_Depressor_L];
                     break;
                 case FBEye.Right:
                     frooxEye.UpdateWithRotation(new floatQ(-expressions[FBExpression.RightRot_x], -expressions[FBExpression.RightRot_z], -expressions[FBExpression.RightRot_y], expressions[FBExpression.RightRot_w]));
@@ -360,6 +361,7 @@ namespace QuestProModule.ALXR
                     frooxEye.Openness = MathX.Max(0, expressions[FBExpression.Eyes_Closed_R]);
                     frooxEye.Squeeze = expressions[FBExpression.Lid_Tightener_R];
                     frooxEye.Widen = expressions[FBExpression.Upper_Lid_Raiser_R];
+                    frooxEye.Frown = expressions[FBExpression.Lip_Corner_Puller_R] - expressions[FBExpression.Lip_Corner_Depressor_R];
                     break;
                 case FBEye.Combined:
                     frooxEye.UpdateWithRotation(MathX.Slerp(new floatQ(expressions[FBExpression.LeftRot_x], expressions[FBExpression.LeftRot_y], expressions[FBExpression.LeftRot_z], expressions[FBExpression.LeftRot_w]), new floatQ(expressions[FBExpression.RightRot_x], expressions[FBExpression.RightRot_y], expressions[FBExpression.RightRot_z], expressions[FBExpression.RightRot_w]), 0.5f));
@@ -381,12 +383,12 @@ namespace QuestProModule.ALXR
             mouth.IsDeviceActive = Engine.Current.InputInterface.VR_Active;
             mouth.IsTracking = Engine.Current.InputInterface.VR_Active;
 
-            mouth.JawOpen = expressions[FBExpression.Jaw_Drop];
+            mouth.JawOpen = expressions[FBExpression.Jaw_Drop] - expressions[FBExpression.Lips_Toward];
             
             mouth.Jaw = new float3( 
                 expressions[FBExpression.Jaw_Sideways_Left] - expressions[FBExpression.Jaw_Sideways_Right],
-                expressions[FBExpression.Jaw_Thrust],
-                0f
+                expressions[FBExpression.Jaw_Drop],
+                expressions[FBExpression.Jaw_Thrust]
             );
 
             mouth.LipUpperLeftRaise = expressions[FBExpression.Mouth_Left];
@@ -419,9 +421,8 @@ namespace QuestProModule.ALXR
             //else if (UnifiedTrackingData.LatestLipData.LatestShapes[(int)UnifiedExpression.MouthSmileRight] < UnifiedTrackingData.LatestLipData.LatestShapes[(int)UnifiedExpression.MouthSadRight])
             //    UnifiedTrackingData.LatestLipData.LatestShapes[(int)UnifiedExpression.MouthSmileRight] /= 1 + UnifiedTrackingData.LatestLipData.LatestShapes[(int)UnifiedExpression.MouthSadRight];
 
-            var cheekSuck = (expressions[FBExpression.Cheek_Suck_L] + expressions[FBExpression.Cheek_Suck_R]) / 2;
-            mouth.CheekLeftPuffSuck = expressions[FBExpression.Cheek_Puff_L] - cheekSuck;
-            mouth.CheekRightPuffSuck = expressions[FBExpression.Cheek_Puff_R] - cheekSuck;
+            mouth.CheekLeftPuffSuck = expressions[FBExpression.Cheek_Puff_L] - expressions[FBExpression.Cheek_Suck_L];
+            mouth.CheekRightPuffSuck = expressions[FBExpression.Cheek_Puff_R] - expressions[FBExpression.Cheek_Suck_R];
         }
 
         public float GetFaceExpression(int expressionIndex)
