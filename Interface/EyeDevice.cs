@@ -40,14 +40,23 @@ namespace QuestProModule
 
         public void UpdateInputs(float deltaTime)
         {
+            if (!QuestProMod.qpm.Connected) 
+            {
+                _eyes.IsEyeTrackingActive = false;
+                _eyes.LeftEye.IsTracking = false;
+                _eyes.RightEye.IsTracking = false;
+                _eyes.FinishUpdate();
+                return;
+            }
             _eyes.IsEyeTrackingActive = input.VR_Active;
 
             _eyes.LeftEye.IsTracking = input.VR_Active;
+            _eyes.RightEye.IsTracking = input.VR_Active;
 
             var leftEyeData = QuestProMod.qpm.GetEyeData(FBEye.Left);
             var rightEyeData = QuestProMod.qpm.GetEyeData(FBEye.Right);
 
-            _eyes.LeftEye.IsTracking = leftEyeData.isValid;
+            _eyes.LeftEye.IsTracking &= leftEyeData.isValid;
             _eyes.LeftEye.RawPosition = leftEyeData.position;
             _eyes.LeftEye.UpdateWithRotation(leftEyeData.rotation);
             _eyes.LeftEye.PupilDiameter = 0.004f;
@@ -55,7 +64,7 @@ namespace QuestProModule
             _eyes.LeftEye.Squeeze = leftEyeData.squeeze;
             _eyes.LeftEye.Openness = leftEyeData.open;
 
-            _eyes.RightEye.IsTracking = rightEyeData.isValid;
+            _eyes.RightEye.IsTracking &= rightEyeData.isValid;
             _eyes.RightEye.RawPosition = rightEyeData.position;
             _eyes.RightEye.UpdateWithRotation(rightEyeData.rotation);
             _eyes.RightEye.PupilDiameter = 0.004f;

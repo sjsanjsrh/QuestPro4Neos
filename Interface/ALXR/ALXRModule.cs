@@ -27,6 +27,9 @@ namespace QuestProModule.ALXR
 
         private double pitch_L, yaw_L, pitch_R, yaw_R; // Eye rotations
 
+        public bool Connected
+        { get { return connected; } }
+
         public async Task<bool> Initialize(string ipconfig)
         {
             try
